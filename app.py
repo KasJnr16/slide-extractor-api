@@ -117,3 +117,84 @@ async def extract_text(file: UploadFile = File(...)):
     slides_text = extract_text_from_pptx_file(file_like)
     
     return {"filename": file.filename, "slides": slides_text}
+
+
+from fastapi.responses import StreamingResponse
+from docx import Document
+from docx.shared import Pt
+import zipfile
+
+# ----------------------------
+# Helper to create zip in memory
+# ----------------------------
+def create_exam_package_in_memory(document_name, questions, answers):
+    """
+    Creates questions and answers Word docs in memory and zips them.
+
+    Returns:
+        BytesIO: The zip file as a BytesIO object.
+    """
+    # In-memory Word docs
+    questions_io = BytesIO()
+    answers_io = BytesIO()
+
+    # ------------------
+    # Questions doc
+    # ------------------
+    doc_q = Document()
+    doc_q.add_heading(f"{document_name} - Questions", level=1)
+    for i, q in enumerate(questions, 1):
+        para = doc_q.add_paragraph(f"{i}. {q}")
+        para.paragraph_format.space_after = Pt(6)
+    doc_q.save(questions_io)
+    questions_io.seek(0)  # reset pointer
+
+    # ------------------
+    # Answers doc
+    # ------------------
+    doc_a = Document()
+    doc_a.add_heading(f"{document_name} - Answers", level=1)
+    for i, a in enumerate(answers, 1):
+        para = doc_a.add_paragraph(f"{i}. {a}")
+        para.paragraph_format.space_after = Pt(6)
+    doc_a.save(answers_io)
+    answers_io.seek(0)
+
+    # ------------------
+    # Create zip in memory
+    # ------------------
+    zip_io = BytesIO()
+    with zipfile.ZipFile(zip_io, mode="w") as zipf:
+        zipf.writestr(f"{document_name}_questions.docx", questions_io.getvalue())
+        zipf.writestr(f"{document_name}_answers.docx", answers_io.getvalue())
+    zip_io.seek(0)
+
+    return zip_io
+
+# ----------------------------
+# API endpoint
+# ----------------------------
+@app.post("/generate_exam_zip/")
+async def generate_exam_zip(
+    document_name: str,
+    questions_file: UploadFile = File(...),
+    answers_file: UploadFile = File(...)
+):
+    """
+    Accepts two text files (questions and answers) and returns a zip
+    containing two Word documents (questions + answers) without saving them on disk.
+    """
+    # Read uploaded text files
+    questions_text = (await questions_file.read()).decode("utf-8").splitlines()
+    answers_text = (await answers_file.read()).decode("utf-8").splitlines()
+
+    # Create zip in memory
+    zip_io = create_exam_package_in_memory(document_name, questions_text, answers_text)
+
+    # Return as downloadable file
+    return StreamingResponse(
+        zip_io,
+        media_type="application/x-zip-compressed",
+        headers={"Content-Disposition": f"attachment; filename={document_name}.zip"}
+    )
+
