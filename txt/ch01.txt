@@ -1,0 +1,224 @@
+--- Slide 1 ---
+Computer/Software Security: Principles and Practice
+Chapter 1: Overview
+
+
+--- Slide 2 ---
+Chapter 1 overview
+Computer Security Concepts
+Threats, Attacks, and Assets
+Security Functional Requirements
+Fundamental Security Design Principles
+Attack Surfaces and Attack Trees
+Computer Security Strategy
+
+
+
+--- Slide 3 ---
+Learning objectives
+Describe the key security requirements of confidentiality, integrity and availability 
+Discuss the types security threats and attacks that must be dealt with
+Summarize the functional requirements for computer security
+Explain the fundamental security design principles
+Discuss the use of attack surfaces and attack trees
+Understand the principle aspects of a comprehensive security strategy
+
+
+--- Slide 4 ---
+A definition of computer security
+Computer security: The protection afforded to an automated information system in order to attain the applicable objectives of preserving the integrity, availability and confidentiality of information system resources (includes hardware, software, firmware, information/data, and telecommunications)
+NIST  1995
+
+
+--- Slide 5 ---
+Three key objectives (the CIA triad)
+Confidentiality
+Data confidentiality: Assures that confidential information is not disclosed to unauthorized individuals
+Privacy: Assures that individual control or influence what information may be collected and stored
+Integrity
+Data integrity: assures that information and programs are changed only in a specified and authorized manner
+System integrity: Assures that a system performs its operations in unimpaired manner
+Availability: assure that systems works promptly and service is not denied to authorized users
+
+
+--- Slide 6 ---
+Key Security Concepts
+
+
+--- Slide 7 ---
+Other concepts to a complete security picture
+Authenticity: the property of being genuine and being able to be verified and trusted; confident in the validity of a transmission, or a message, or its originator
+Accountability (Non-Repudiation): generates the requirement for actions of an entity to be traced uniquely to that individual to support nonrepudiation, deference, fault isolation, etc
+
+
+
+--- Slide 8 ---
+Levels of security breach impact
+Low: the loss will have a limited impact, e.g., a degradation in mission or minor damage or minor financial loss or minor harm
+Moderate: the loss has a serious effect, e.g., significance degradation on mission or significant harm to individuals but no loss of life or threatening injuries
+High: the loss has severe or catastrophic adverse effect on operations, organizational assets or on individuals (e.g., loss of life)
+
+
+--- Slide 9 ---
+Challenges of computer security
+Computer security is not simple
+One must consider potential (unexpected) attacks
+Procedures used are often counter-intuitive
+Must decide where to deploy mechanisms
+Involve algorithms and secret info (keys)
+A battle of wits between attacker / admin
+It is not perceived on benefit until fails
+Requires constant monitoring
+Too often an after-thought (not integral)
+Regarded as impediment to using system
+
+
+
+--- Slide 10 ---
+Computer
+security
+terminology
+
+
+--- Slide 11 ---
+Threat consequences
+Unauthorized disclosure: threat to confidentiality 
+Exposure (release data), interception, inference, intrusion
+Deception: threat to integrity
+Masquerade, falsification (alter data), repudiation
+Disruption: threat to integrity and availability
+Incapacitation (destruction), corruption (backdoor logic), obstruction (infer with communication, overload a line)
+Usurpation: threat to integrity
+Misappropriation (theft of service), misuse (hacker gaining unauthorized access)
+
+
+--- Slide 12 ---
+Threat 
+consequences
+(tabular form)
+
+
+--- Slide 13 ---
+The scope of computer security
+
+
+--- Slide 14 ---
+Examples of threats
+
+
+--- Slide 15 ---
+Security functional requirements (FIPS 200)
+Technical measures
+Access control; identification & authentication; system & communication protection; system & information integrity
+Management controls and procedures 
+Awareness & training; audit & accountability; certification, accreditation, & security assessments; contingency planning; maintenance; physical & environmental protection; planning; personnel security; risk assessment; systems & services acquisition
+Overlapping technical and management
+Configuration management; incident response; media protection
+
+
+--- Slide 16 ---
+Fundamental security design principles [1/4]
+Despite years of research, it is still difficult to design systems that comprehensively prevent security flaws
+But good practices for good design have been documented (analogous to software engineering)
+Economy of mechanism, fail-safe defaults, complete mediation, open design, separation of privileges, lease privilege, least common mechanism, psychological accountability, isolation, encapsulation, modularity, layering, least astonishment
+
+
+
+--- Slide 17 ---
+Fundamental security design principles [2/4]
+Economy of mechanism: the design of security measures should be as simple as possible
+Simpler to implement and to verify
+Fewer vulnerabilities
+Fail-safe default: access decisions should be based on permissions; i.e., the default is lack of access
+Complete mediation: every access should checked against an access control system
+Open design: the design should be open rather than secret (e.g., encryption algorithms) 
+
+
+
+--- Slide 18 ---
+Fundamental security design principles [3/4]
+Isolation
+Public access should be isolated from critical resources (no connection between public and critical information)
+Users files should be isolated from one another (except when desired)
+Security mechanism should be isolated (i.e., preventing access to those mechanisms)
+Encapsulation: similar to object concepts (hide internal structures)
+Modularity: modular structure
+
+
+
+
+--- Slide 19 ---
+Fundamental security design principles [4/4]
+Layering (defense in depth): use of multiple, overlapping protection approaches
+Least astonishment: a program or interface should always respond in a way that is least likely to astonish a user
+
+
+
+--- Slide 20 ---
+Fundamental security design principles
+Separation of privilege: multiple privileges should be needed to do achieve access (or complete a task)
+Least privilege: every user (process) should have the least privilege to perform a task
+Least common mechanism: a design should minimize the function shared by different users (providing mutual security; reduce deadlock)
+Psychological acceptability: security mechanisms should not interfere unduly with the work of users
+
+
+
+--- Slide 21 ---
+Attack surfaces
+Attack surface: the reachable and exploitable vulnerabilities in a system
+Open ports
+Services outside a firewall
+An employee with access to sensitive info
+…
+Three categories
+Network attack surface (i.e., network vulnerability)
+Software attack surface (i.e., software vulnerabilities) 
+Human attack surface (e.g., social engineering)
+Attack analysis: assessing the scale and severity of threats
+
+
+--- Slide 22 ---
+Attack trees
+A branching, hierarchical data structure that represents a set of potential vulnerabilities 
+Objective: to effectively exploit the info available on attack patterns
+published on CERT or similar forums
+Security analysts can use the tree to guide design and strengthen coiuntermeasures 
+
+
+--- Slide 23 ---
+Computer security strategy
+An overall strategy for providing security
+Policy (specs): what security schemes are supposed to do
+Assets and their values
+Potential threats
+Ease of use vs security
+Cost of security vs cost of failure/recovery
+Implementation/mechanism: how to enforce
+Prevention
+Detection
+Response
+Recovery
+Correctness/assurance: does it really work (validation/review)
+
+
+--- Slide 24 ---
+Security Taxonomy
+
+
+--- Slide 25 ---
+Computer Security Losses
+
+
+--- Slide 26 ---
+Security Technologies Used
+
+
+--- Slide 27 ---
+Summary
+Security concepts
+Terminology
+Functional requirements
+Security design principles
+Security strategy
+
+
