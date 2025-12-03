@@ -53,7 +53,8 @@ def extract_text_from_pptx_file(file_like):
 # Java .ppt extraction
 # ------------------------------
 def extract_text_from_ppt_file(file_path):
-    jar_path = os.path.join(os.path.dirname(__file__), "/ppt_converter/target/ppt-converter-1.0-jar-with-dependencies.jar")
+    jar_path = os.path.join(os.path.dirname(__file__), "ppt_converter/target/ppt-converter-1.0-jar-with-dependencies.jar")
+
     
     try:
         result = subprocess.run(

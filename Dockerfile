@@ -13,6 +13,9 @@ RUN pip3 install --no-cache-dir -r requirements.txt
 
 COPY . .
 
+# Make sure the jar exists
+RUN ls -l /app/ppt_converter/target/
+
 EXPOSE 5000
 ENV PORT=5000
 
