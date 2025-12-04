@@ -118,7 +118,6 @@ async def extract_text(file: UploadFile = File(...)):
     
     return {"filename": file.filename, "slides": slides_text}
 
-
 from fastapi.responses import StreamingResponse
 from docx import Document
 from docx.shared import Pt
@@ -143,9 +142,10 @@ def create_exam_package_in_memory(document_name, questions, answers):
     # ------------------
     doc_q = Document()
     doc_q.add_heading(f"{document_name} - Questions", level=1)
-    for i, q in enumerate(questions, 1):
-        para = doc_q.add_paragraph(f"{i}. {q}")
-        para.paragraph_format.space_after = Pt(6)
+    for q in questions:  # ✅ Removed enumerate
+        if q.strip():  # Only add non-empty lines
+            para = doc_q.add_paragraph(q)  # ✅ No numbering added here
+            para.paragraph_format.space_after = Pt(6)
     doc_q.save(questions_io)
     questions_io.seek(0)  # reset pointer
 
@@ -154,9 +154,10 @@ def create_exam_package_in_memory(document_name, questions, answers):
     # ------------------
     doc_a = Document()
     doc_a.add_heading(f"{document_name} - Answers", level=1)
-    for i, a in enumerate(answers, 1):
-        para = doc_a.add_paragraph(f"{i}. {a}")
-        para.paragraph_format.space_after = Pt(6)
+    for a in answers:  # ✅ Removed enumerate
+        if a.strip():  # Only add non-empty lines
+            para = doc_a.add_paragraph(a)  # ✅ No numbering added here
+            para.paragraph_format.space_after = Pt(6)
     doc_a.save(answers_io)
     answers_io.seek(0)
 
@@ -197,4 +198,3 @@ async def generate_exam_zip(
         media_type="application/x-zip-compressed",
         headers={"Content-Disposition": f"attachment; filename={document_name}.zip"}
     )
-
