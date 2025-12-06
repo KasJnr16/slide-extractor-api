@@ -230,10 +230,50 @@ def create_exam_package_in_memory(document_name, questions, answers):
 @app.post("/extract_document_text/")
 async def extract_document_text(file: UploadFile = File(...)):
     contents = await file.read()
-    filename = file.filename
+    filename = file.filename.lower()
+
     try:
+        # -------------------------------
+        # Handle PPTX
+        # -------------------------------
+        if filename.endswith(".pptx"):
+            file_like = BytesIO(contents)
+            slides = extract_text_from_pptx_file(file_like)
+
+            combined = "\n\n".join(
+                f"Slide {s['slide']}:\n{s['text']}" for s in slides
+            )
+            return {
+                "filename": filename,
+                "text": combined.strip()
+            }
+
+        # -------------------------------
+        # Handle PPT
+        # -------------------------------
+        if filename.endswith(".ppt"):
+            # Save temp file for Java extractor
+            temp_path = os.path.join(os.path.dirname(__file__), filename)
+            with open(temp_path, "wb") as f:
+                f.write(contents)
+
+            slides = extract_text_from_ppt_file(temp_path)
+            os.remove(temp_path)  # Clean temp file
+
+            combined = "\n\n".join(
+                f"Slide {s['slide']}:\n{s['text']}" for s in slides
+            )
+            return {
+                "filename": filename,
+                "text": combined.strip()
+            }
+
+        # -------------------------------
+        # Other file types (PDF, DOCX, IMG, TXT)
+        # -------------------------------
         extracted = extract_text_from_any(contents, filename)
         return {"filename": filename, "text": extracted}
+
     except Exception as e:
         return {"error": str(e)}
 
