@@ -8,3 +8,5 @@ PyPDF2
 python-pptx
 python-docx
 python-multipart
+pandas
+openpyxl
