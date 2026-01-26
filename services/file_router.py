@@ -2,7 +2,8 @@
 File routing service to determine appropriate extractor for different file types
 """
 from typing import Dict, Any, Tuple
-from .text_extractor import extract_text_from_any, extract_excel_from_bytes
+from .text_extractor import extract_text_from_any
+from .excel_extractor import ExcelExtractor
 from .powerpoint_extractor import extract_powerpoint_text
 
 
@@ -38,7 +39,8 @@ class FileRouter:
         file_type = FileRouter.get_file_type(filename)
         
         if file_type == 'excel':
-            content = extract_excel_from_bytes(file_bytes, filename)
+            extractor = ExcelExtractor()
+            content = extractor.extract_from_bytes(file_bytes, filename)
         elif file_type == 'powerpoint':
             content = extract_powerpoint_text(file_bytes, filename)
         elif file_type == 'text':
@@ -47,42 +49,3 @@ class FileRouter:
             raise ValueError(f"Unsupported file type: {filename}")
         
         return file_type, content
-    
-    @staticmethod
-    def extract_text_content(file_bytes: bytes, filename: str) -> str:
-        """
-        Extract text content from any supported file type
-        
-        Args:
-            file_bytes: File content as bytes
-            filename: Name of the file
-            
-        Returns:
-            String containing extracted text
-        """
-        file_type = FileRouter.get_file_type(filename)
-        
-        if file_type == 'excel':
-            excel_data = extract_excel_from_bytes(file_bytes, filename)
-            # Convert Excel data to text format
-            from .text_extractor import clean_text
-            all_text = []
-            for sheet in excel_data["sheets"]:
-                all_text.append(f"=== Sheet: {sheet['name']} ===")
-                for cell in sheet["data"]:
-                    if cell["value"].strip():
-                        all_text.append(f"{cell['cell']}: {cell['value']}")
-            return clean_text("\n".join(all_text))
-        
-        elif file_type == 'powerpoint':
-            slides = extract_powerpoint_text(file_bytes, filename)
-            combined = "\n\n".join(
-                f"Slide {s['slide']}:\n{s['text']}" for s in slides
-            )
-            return combined.strip()
-        
-        elif file_type == 'text':
-            return extract_text_from_any(file_bytes, filename)
-        
-        else:
-            raise ValueError(f"Unsupported file type: {filename}")

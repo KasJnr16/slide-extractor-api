@@ -8,9 +8,8 @@ from PIL import Image
 import io
 import re
 import pandas as pd
-import openpyxl
-from openpyxl.utils import get_column_letter
 from typing import Dict, Any
+from .excel_extractor import ExcelExtractor
 
 
 def clean_text(text):
@@ -69,156 +68,24 @@ def extract_excel_from_bytes(file_bytes: bytes, filename: str) -> Dict[str, Any]
     Returns:
         Dictionary containing extracted data with structured format
     """
-    try:
-        if filename.lower().endswith(('.xlsx', '.xlsm')):
-            return _extract_xlsx(file_bytes)
-        elif filename.lower().endswith('.xls'):
-            return _extract_xls(file_bytes)
-        else:
-            raise ValueError(f"Unsupported Excel format: {filename}")
-    except Exception as e:
-        raise ValueError(f"Error extracting Excel data: {str(e)}")
+    extractor = ExcelExtractor()
+    return extractor.extract_from_bytes(file_bytes, filename)
 
 
-def _extract_xlsx(file_bytes: bytes) -> Dict[str, Any]:
-    """Extract from modern Excel format (.xlsx) using openpyxl."""
-    workbook = openpyxl.load_workbook(io.BytesIO(file_bytes), data_only=True)
+def extract_excel_as_text(file_bytes: bytes, filename: str) -> str:
+    """
+    Extract Excel content and return it in CELL-BY-CELL text format.
     
-    sheets_data = []
-    
-    for sheet_name in workbook.sheetnames:
-        sheet = workbook[sheet_name]
-        sheet_data = []
-        non_empty_count = 0
+    Args:
+        file_bytes: Excel file content as bytes
+        filename: Name of the file (for format detection)
         
-        for row_idx, row in enumerate(sheet.iter_rows(), 1):
-            for col_idx, cell in enumerate(row, 1):
-                value = _get_cell_value(cell)
-                data_type = _get_cell_type(cell)
-                
-                if value is not None and str(value).strip():
-                    non_empty_count += 1
-                
-                cell_info = {
-                    "cell": f"{get_column_letter(col_idx)}{row_idx}",
-                    "row": row_idx,
-                    "col": col_idx,
-                    "col_letter": get_column_letter(col_idx),
-                    "value": str(value) if value is not None else "",
-                    "data_type": data_type
-                }
-                sheet_data.append(cell_info)
-        
-        # Get dimensions
-        max_row = sheet.max_row if sheet.max_row else 0
-        max_col = sheet.max_column if sheet.max_column else 0
-        
-        sheets_data.append({
-            "name": sheet_name,
-            "data": sheet_data,
-            "summary": {
-                "total_rows": max_row,
-                "total_cols": max_col,
-                "non_empty_cells": non_empty_count
-            }
-        })
-    
-    return {
-        "filename": "excel_file",
-        "sheets": sheets_data
-    }
+    Returns:
+        Formatted text string with cell-by-cell data
+    """
+    extractor = ExcelExtractor()
+    return extractor.extract_as_text(file_bytes, filename)
 
-
-def _extract_xls(file_bytes: bytes) -> Dict[str, Any]:
-    """Extract from legacy Excel format (.xls) using pandas."""
-    # Use pandas as fallback for .xls files
-    excel_file = io.BytesIO(file_bytes)
-    
-    try:
-        # Read all sheets
-        xls = pd.ExcelFile(excel_file)
-        sheets_data = []
-        
-        for sheet_name in xls.sheet_names:
-            df = pd.read_excel(excel_file, sheet_name=sheet_name, header=None)
-            sheet_data = []
-            non_empty_count = 0
-            
-            for row_idx, row in df.iterrows():
-                for col_idx, value in enumerate(row, 1):
-                    if pd.notna(value) and str(value).strip():
-                        non_empty_count += 1
-                    
-                    cell_info = {
-                        "cell": f"{get_column_letter(col_idx)}{row_idx + 1}",
-                        "row": row_idx + 1,
-                        "col": col_idx,
-                        "col_letter": get_column_letter(col_idx),
-                        "value": str(value) if pd.notna(value) else "",
-                        "data_type": _infer_data_type(value)
-                    }
-                    sheet_data.append(cell_info)
-            
-            sheets_data.append({
-                "name": sheet_name,
-                "data": sheet_data,
-                "summary": {
-                    "total_rows": len(df),
-                    "total_cols": len(df.columns),
-                    "non_empty_cells": non_empty_count
-                }
-            })
-        
-        return {
-            "filename": "excel_file",
-            "sheets": sheets_data
-        }
-        
-    except Exception as e:
-        raise ValueError(f"Error reading .xls file: {str(e)}")
-
-
-def _get_cell_value(cell) -> Any:
-    """Get the actual value from an openpyxl cell."""
-    if cell.is_date:
-        return cell.value
-    elif cell.data_type == 'f':  # formula
-        return cell.value if cell.value is not None else ""
-    else:
-        return cell.value
-
-
-def _get_cell_type(cell) -> str:
-    """Determine the data type of a cell."""
-    if cell.data_type == 'f':
-        return "formula"
-    elif cell.is_date:
-        return "date"
-    elif cell.data_type == 'n':
-        return "number"
-    elif cell.data_type == 's':
-        return "string"
-    elif cell.data_type == 'b':
-        return "boolean"
-    else:
-        return "empty"
-
-
-def _infer_data_type(value) -> str:
-    """Infer data type for pandas-based extraction."""
-    if pd.isna(value) or value == "":
-        return "empty"
-    elif isinstance(value, (int, float)):
-        return "number"
-    elif isinstance(value, str):
-        # Try to detect if it's a date
-        try:
-            pd.to_datetime(value)
-            return "date"
-        except:
-            return "string"
-    else:
-        return "unknown"
 
 
 def extract_text_from_any(file_bytes: bytes, filename: str):
@@ -229,15 +96,7 @@ def extract_text_from_any(file_bytes: bytes, filename: str):
 
     # ----- Excel -----
     if filename.endswith(('.xlsx', '.xls', '.xlsm')):
-        excel_data = extract_excel_from_bytes(file_bytes, filename)
-        # Convert Excel data to text format for backward compatibility
-        all_text = []
-        for sheet in excel_data["sheets"]:
-            all_text.append(f"=== Sheet: {sheet['name']} ===")
-            for cell in sheet["data"]:
-                if cell["value"].strip():
-                    all_text.append(f"{cell['cell']}: {cell['value']}")
-        return clean_text("\n".join(all_text))
+        return extract_excel_as_text(file_bytes, filename)
 
     # ----- PDF -----
     if filename.endswith(".pdf"):

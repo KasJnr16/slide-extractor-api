@@ -43,89 +43,19 @@ async def extract_file(file: UploadFile = File(...)):
         # Route to appropriate extractor
         file_type, extracted_content = FileRouter.extract_file_content(contents, filename)
         
-        # Format response based on file type
-        if file_type == 'excel':
-            return {
-                "filename": filename,
-                "file_type": "excel",
-                "sheets": extracted_content["sheets"]
-            }
-        elif file_type == 'powerpoint':
-            return {
-                "filename": filename,
-                "file_type": "powerpoint",
-                "slides": extracted_content
-            }
-        else:  # text files
-            return {
-                "filename": filename,
-                "file_type": "text",
-                "text": extracted_content
-            }
+        # Format response with consistent structure
+        return {
+            "filename": filename,
+            "file_type": file_type,
+            "content": extracted_content
+        }
             
     except Exception as e:
         return {"error": str(e)}
 
 
 # ======================================================
-# SPECIALIZED ENDPOINTS (Keep for backward compatibility)
-# ======================================================
-@app.post("/extract_excel/")
-async def extract_excel(file: UploadFile = File(...)):
-    """Dedicated Excel extraction endpoint"""
-    try:
-        contents = await file.read()
-        filename = file.filename
-        
-        excel_data = FileRouter.extract_file_content(contents, filename)[1]
-        
-        return {
-            "filename": filename,
-            "sheets": excel_data["sheets"]
-        }
-    except Exception as e:
-        return {"error": str(e)}
-
-
-@app.post("/extract_document_text/")
-async def extract_document_text(file: UploadFile = File(...)):
-    """Extract text from any document (backward compatibility)"""
-    try:
-        contents = await file.read()
-        filename = file.filename
-        
-        extracted_text = FileRouter.extract_text_content(contents, filename)
-        
-        return {
-            "filename": filename,
-            "text": extracted_text
-        }
-    except Exception as e:
-        return {"error": str(e)}
-
-
-@app.post("/extract_text/")
-async def extract_text(file: UploadFile = File(...)):
-    """PowerPoint-specific extraction (backward compatibility)"""
-    try:
-        contents = await file.read()
-        filename = file.filename
-        
-        # Ensure only .pptx or .ppt
-        ext = os.path.splitext(filename)[1].lower()
-        if ext not in (".pptx", ".ppt"):
-            return {"error": "File must be a .pptx or .ppt"}
-        
-        slides_text = FileRouter.extract_file_content(contents, filename)[1]
-        
-        return {"filename": filename, "slides": slides_text}
-        
-    except Exception as e:
-        return {"error": str(e)}
-
-
-# ======================================================
-# DOCUMENT GENERATION ENDPOINTS (Keep as they are)
+# DOCUMENT GENERATION ENDPOINTS
 # ======================================================
 @app.post("/generate_exam_zip/")
 async def generate_exam_zip(
