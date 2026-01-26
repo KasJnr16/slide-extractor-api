@@ -70,14 +70,14 @@ class ExcelExtractor:
         
         for sheet_name in workbook.sheetnames:
             sheet = workbook[sheet_name]
-            sheet_data = []
+            sheet_data = {}
             non_empty_count = 0
             
             # Get actual used range
             max_row = sheet.max_row or 1
             max_col = sheet.max_column or 1
             
-            # Extract all cells in the used range
+            # Extract only non-empty cells
             for row_idx in range(1, max_row + 1):
                 for col_idx in range(1, max_col + 1):
                     cell = sheet.cell(row=row_idx, column=col_idx)
@@ -92,18 +92,15 @@ class ExcelExtractor:
                     else:
                         value_str = str(value)
                     
-                    if value_str.strip():
-                        non_empty_count += 1
+                    # Skip empty cells
+                    if not value_str.strip():
+                        continue
                     
-                    cell_info = {
-                        "cell": f"{get_column_letter(col_idx)}{row_idx}",
-                        "row": row_idx,
-                        "col": col_idx,
-                        "col_letter": get_column_letter(col_idx),
-                        "value": value_str,
-                        "data_type": data_type
-                    }
-                    sheet_data.append(cell_info)
+                    non_empty_count += 1
+                    
+                    # Store as key-value: cell_ref -> [value, type]
+                    cell_ref = f"{get_column_letter(col_idx)}{row_idx}"
+                    sheet_data[cell_ref] = [value_str, data_type]
             
             sheets_data.append({
                 "name": sheet_name,
@@ -131,7 +128,7 @@ class ExcelExtractor:
             
             for sheet_name in xls.sheet_names:
                 df = pd.read_excel(excel_file, sheet_name=sheet_name, header=None)
-                sheet_data = []
+                sheet_data = {}
                 non_empty_count = 0
                 
                 for row_idx in range(len(df)):
@@ -146,18 +143,15 @@ class ExcelExtractor:
                         else:
                             value_str = str(value)
                         
-                        if value_str.strip():
-                            non_empty_count += 1
+                        # Skip empty cells
+                        if not value_str.strip():
+                            continue
                         
-                        cell_info = {
-                            "cell": f"{get_column_letter(col_idx + 1)}{row_idx + 1}",
-                            "row": row_idx + 1,
-                            "col": col_idx + 1,
-                            "col_letter": get_column_letter(col_idx + 1),
-                            "value": value_str,
-                            "data_type": self._infer_data_type(value)
-                        }
-                        sheet_data.append(cell_info)
+                        non_empty_count += 1
+                        
+                        # Store as key-value: cell_ref -> [value, type]
+                        cell_ref = f"{get_column_letter(col_idx + 1)}{row_idx + 1}"
+                        sheet_data[cell_ref] = [value_str, self._infer_data_type(value)]
                 
                 sheets_data.append({
                     "name": sheet_name,
