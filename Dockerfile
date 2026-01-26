@@ -1,43 +1,35 @@
-# 1. Base image (JDK + Ubuntu Jammy)
+# 1. Base image (Java + Linux)
 FROM eclipse-temurin:17-jdk-jammy
 
-# 2. Install system dependencies
+# 2. System dependencies
 RUN apt-get update && \
     apt-get install -y \
-        python3 python3-pip python3-venv \
+        python3 python3-pip \
         tesseract-ocr \
         tesseract-ocr-eng \
         poppler-utils \
         libjpeg8-dev zlib1g-dev libpng-dev \
         ghostscript \
-        && rm -rf /var/lib/apt/lists/*
+        curl \
+    && rm -rf /var/lib/apt/lists/*
 
 # 3. Workdir
 WORKDIR /app
 
-# 4. Install Python dependencies
+# 4. Python deps
 COPY requirements.txt .
 RUN pip3 install --no-cache-dir -r requirements.txt
 
-# 5. Copy project files (including services package)
+# 5. App code
 COPY . .
 
-# 6. Verify JAR exists (for PPT converter)
-RUN echo "Checking Java converter JAR:" && ls -l /app/ppt_converter/target/ || echo "JAR not found - PPT conversion may not work"
+# 6. Optional sanity checks
+RUN echo "Checking services:" && ls -la /app/services || true
+RUN echo "Checking PPT converter:" && ls -la /app/ppt_converter/target || true
 
-# 7. Verify services package structure
-RUN echo "Checking services package:" && ls -la /app/services/
+# 7. Cloud Run port
+ENV PORT=8080
+EXPOSE 8080
 
-# 8. Create necessary directories
-RUN mkdir -p /app/uploads /app/temp
-
-# 9. Expose port
-EXPOSE 5000
-ENV PORT=5000
-
-# 10. Health check
-HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:5000/health || exit 1
-
-# 11. Start server
-CMD ["python3", "-m", "uvicorn", "app:app", "--host", "0.0.0.0", "--port", "5000"]
+# 8. Start FastAPI
+CMD ["python3", "-m", "uvicorn", "app:app", "--host", "0.0.0.0", "--port", "8080"]
