@@ -1,11 +1,15 @@
 """
-Text extraction services for various document formats
+Text extraction services for PDF, DOCX, TXT, and image files
+Supports OCR for images and text extraction for various document formats
 """
-import pytesseract
-from pdf2image import convert_from_bytes
+import io
+import os
+from typing import Optional
+from .structured_logger import logger, OperationTimer
+from .file_validator import validate_file
 from PyPDF2 import PdfReader
 from PIL import Image
-import io
+import pytesseract
 import re
 import pandas as pd
 from typing import Dict, Any
@@ -88,39 +92,102 @@ def extract_excel_as_text(file_bytes: bytes, filename: str) -> str:
 
 
 
-def extract_text_from_any(file_bytes: bytes, filename: str):
+def extract_text_from_any(file_bytes: bytes, filename: str, request_id: str = None):
     """
     Universal text extraction from various file formats
+    
+    Args:
+        file_bytes: File content as bytes
+        filename: Name of the file
+        request_id: Optional request ID for tracing
+        
+    Returns:
+        Extracted text content
     """
-    filename = filename.lower()
+    with OperationTimer("text_extraction", filename=filename, request_id=request_id):
+        try:
+            # Validate file
+            validation_result = validate_file(
+                filename or "",
+                len(file_bytes),
+                "application/octet-stream"  # MIME type not available at this level
+            )
+            
+            if not validation_result["valid"]:
+                logger.log_validation_error(
+                    filename=filename or "unknown",
+                    errors=validation_result["errors"],
+                    request_id=request_id
+                )
+                raise ValueError(f"File validation failed: {validation_result['errors']}")
+            
+            logger.info(
+                "Starting text extraction",
+                filename=filename,
+                file_size=len(file_bytes),
+                request_id=request_id
+            )
+            
+            filename = filename.lower()
 
-    # ----- Excel -----
-    if filename.endswith(('.xlsx', '.xls', '.xlsm')):
-        return extract_excel_as_text(file_bytes, filename)
+            # ----- Excel -----
+            if filename.endswith(('.xlsx', '.xls', '.xlsm')):
+                result = extract_excel_as_text(file_bytes, filename)
+                
+            # ----- PDF -----
+            elif filename.endswith(".pdf"):
+                extracted = extract_pdf_text(file_bytes)
+                if extracted and len(extracted) > 20:
+                    result = clean_text(extracted)
+                else:
+                    # Try OCR on PDF pages
+                    try:
+                        from pdf2image import convert_from_bytes
+                        images = convert_from_bytes(file_bytes)
+                        ocr_text = ""
+                        for img in images:
+                            ocr_text += ocr_image(img) + "\n"
+                        result = clean_text(ocr_text)
+                    except ImportError:
+                        logger.warning(
+                            "pdf2image not available, using basic PDF extraction",
+                            filename=filename,
+                            request_id=request_id
+                        )
+                        result = clean_text(extracted) if extracted else ""
 
-    # ----- PDF -----
-    if filename.endswith(".pdf"):
-        extracted = extract_pdf_text(file_bytes)
-        if extracted and len(extracted) > 20:
-            return clean_text(extracted)
+            # ----- Images -----
+            elif filename.endswith((".jpg", ".jpeg", ".png", ".tiff")):
+                img = Image.open(io.BytesIO(file_bytes))
+                result = clean_text(ocr_image(img))
 
-        images = convert_from_bytes(file_bytes)
-        ocr_text = ""
-        for img in images:
-            ocr_text += ocr_image(img) + "\n"
-        return clean_text(ocr_text)
+            # ----- DOCX -----
+            elif filename.endswith(".docx"):
+                result = extract_docx_text(file_bytes)
 
-    # ----- Images -----
-    if filename.endswith((".jpg", ".jpeg", ".png", ".tiff")):
-        img = Image.open(io.BytesIO(file_bytes))
-        return clean_text(ocr_image(img))
+            # ----- TXT -----
+            elif filename.endswith(".txt"):
+                result = extract_text_file(file_bytes)
 
-    # ----- DOCX -----
-    if filename.endswith(".docx"):
-        return extract_docx_text(file_bytes)
-
-    # ----- TXT -----
-    if filename.endswith(".txt"):
-        return extract_text_file(file_bytes)
-
-    raise ValueError("Unsupported file type for extraction.")
+            else:
+                raise ValueError("Unsupported file type for extraction.")
+            
+            logger.log_file_processing(
+                filename=filename,
+                file_size=len(file_bytes),
+                file_type="text",
+                operation="extraction",
+                success=True,
+                request_id=request_id
+            )
+            
+            return result
+            
+        except Exception as e:
+            logger.error(
+                "Text extraction failed",
+                filename=filename,
+                error=str(e),
+                request_id=request_id
+            )
+            raise

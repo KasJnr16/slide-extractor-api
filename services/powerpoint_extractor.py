@@ -1,8 +1,13 @@
 """
-PowerPoint extraction services for both .pptx and .ppt formats
+PowerPoint text extraction services for both .pptx and .ppt formats
+Supports modern .pptx using python-pptx and legacy .ppt using Java converter
 """
 import os
 import subprocess
+import tempfile
+from typing import List, Dict, Any
+from .structured_logger import logger, OperationTimer
+from .file_validator import validate_file
 from io import BytesIO
 from pptx import Presentation
 
@@ -69,9 +74,13 @@ def extract_text_from_ppt_file(file_path):
             check=True
         )
     except subprocess.CalledProcessError as e:
-        print("❌ Java extraction failed:", e)
-        print("stdout:", e.stdout)
-        print("stderr:", e.stderr)
+        logger.error(
+            "Java PowerPoint extraction failed",
+            file_path=file_path,
+            returncode=e.returncode,
+            stdout=e.stdout,
+            stderr=e.stderr
+        )
         return []
 
     slides_text = []
@@ -94,36 +103,86 @@ def extract_text_from_ppt_file(file_path):
     return slides_text
 
 
-def extract_powerpoint_text(file_bytes: bytes, filename: str):
+def extract_powerpoint_text(file_bytes: bytes, filename: str, request_id: str = None):
     """
     Universal PowerPoint text extraction
     
     Args:
         file_bytes: PowerPoint file content as bytes
         filename: Name of the file
+        request_id: Optional request ID for tracing
         
     Returns:
         List of dictionaries with slide number and text content
     """
-    filename = filename.lower()
-    
-    if filename.endswith(".pptx"):
-        file_like = BytesIO(file_bytes)
-        return extract_text_from_pptx_file(file_like)
-    
-    elif filename.endswith(".ppt"):
-        # Save temp file for Java extractor
-        temp_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), filename)
-        with open(temp_path, "wb") as f:
-            f.write(file_bytes)
-        
+    with OperationTimer("powerpoint_extraction", filename=filename, request_id=request_id):
         try:
-            slides = extract_text_from_ppt_file(temp_path)
-            return slides
-        finally:
-            # Clean temp file
-            if os.path.exists(temp_path):
-                os.remove(temp_path)
-    
-    else:
-        raise ValueError("File must be a .pptx or .ppt file")
+            # Validate file
+            validation_result = validate_file(
+                filename or "",
+                len(file_bytes),
+                "application/vnd.openxmlformats-officedocument.presentationml.presentation"
+            )
+            
+            if not validation_result["valid"]:
+                logger.log_validation_error(
+                    filename=filename or "unknown",
+                    errors=validation_result["errors"],
+                    request_id=request_id
+                )
+                raise ValueError(f"File validation failed: {validation_result['errors']}")
+            
+            logger.info(
+                "Starting PowerPoint extraction",
+                filename=filename,
+                file_size=len(file_bytes),
+                request_id=request_id
+            )
+            
+            filename = filename.lower()
+            
+            if filename.endswith(".pptx"):
+                file_like = BytesIO(file_bytes)
+                result = extract_text_from_pptx_file(file_like)
+                
+            elif filename.endswith(".ppt"):
+                # Save to a secure temp file for Java extractor
+                tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".ppt")
+                try:
+                    tmp.write(file_bytes)
+                    tmp.flush()
+                    tmp.close()
+                    result = extract_text_from_ppt_file(tmp.name)
+                finally:
+                    try:
+                        os.remove(tmp.name)
+                    except Exception:
+                        logger.warning(
+                            "Failed to remove temp .ppt file",
+                            temp_path=getattr(tmp, "name", None),
+                            request_id=request_id
+                        )
+            
+            else:
+                raise ValueError("File must be a .pptx or .ppt file")
+            
+            logger.log_file_processing(
+                filename=filename,
+                file_size=len(file_bytes),
+                file_type="powerpoint",
+                operation="extraction",
+                success=True,
+                slides_extracted=len(result),
+                request_id=request_id
+            )
+            
+            return result
+            
+        except Exception as e:
+            logger.error(
+                "PowerPoint extraction failed",
+                filename=filename,
+                error=str(e),
+                request_id=request_id
+            )
+            raise
